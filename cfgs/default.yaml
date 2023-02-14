@@ -38,7 +38,7 @@ grad_clip_norm: 10.
 nstep: 3
 
 lr: 3e-4
-weight_decay: 1e-6 # only used when update encoder and latent dynamics
+weight_decay: 1e-6 # only used when updating encoder and latent dynamics
 
 mlp_dims: [512, 512]
 latent_dim: ${latent_dim}
@@ -53,8 +53,6 @@ save_buffer: false
 save_model: false
 save_interval: 500
 save_logging: true
-
-use_model: 'pass' # ['pass', 'mve', 'bp', 'gae']
 
 run_suffix: 0
 # ref: https://stackoverflow.com/questions/65104134/disable-file-output-of-hydra

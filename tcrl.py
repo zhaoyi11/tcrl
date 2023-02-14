@@ -138,8 +138,7 @@ class TCRL(object):
             obs = torch.tensor(obs, dtype=torch.float32, device=self.device).unsqueeze(0)
         return self.encoder(obs)
 
-
-    def _update_trans(self, obs, action, next_obses, reward):
+    def _update_enc_trans(self, obs, action, next_obses, reward):
 
         self.enc_trans_optim.zero_grad(set_to_none=True)
         self.trans.train()
@@ -182,97 +181,7 @@ class TCRL(object):
                 'trans_grad_norm': float(grad_norm),
                 'z_mean': z.mean().item(), 'z_max':z.max().item(), 'z_min':z.min().item()
                 }
-
-    def _update_q_gae(self, z):
-        zs, acts, rs, qs = [z], [], [], []
-        H = 5
-
-        with torch.no_grad():
-            for t in range(H):
-                act = self.actor(z, self.std).sample(self.std_clip)
-                acts.append(act)
-                qs.append(torch.min(*self.critic_tar(z, act)))
-                z, r = self.trans(z, act)
-                zs.append(z)
-                rs.append(r)
-            
-            # calculate td_target
-            next_q = torch.min(*self.critic_tar(z, self.actor(z, self.std).sample(self.std_clip)))
-            
-            gae_lambda = 0.95
-            lastgaelam = 0.
-
-            td_targets = []
-            for t in reversed(range(len(rs))):
-                if t == len(rs) - 1: # the last timestep
-                    next_values = next_q
-                else:
-                    next_values = qs[t]
-                
-                delta = rs[t] + self.gamma * next_values - qs[t]
-                lastgaelam = delta + self.gamma * gae_lambda * lastgaelam
-                
-                td_targets.append(lastgaelam + qs[t])
-
-            td_targets = list(reversed(td_targets))
-
-        # calculate the td error
-        q_loss = 0
-        for t, td_target in enumerate(td_targets):
-            q1, q2 = self.critic(zs[t], acts[t])
-            q_loss = h.mse(q1, td_target) + h.mse(q2, td_target) 
-        q_loss = torch.mean(q_loss)
-
-        # H-step td
-        # q1, q2 = self.critic(zs[0], acts[0])
-        # q_loss = torch.mean(h.mse(q1, td_targets[0]) + h.mse(q2, td_targets[0]))
-
-        self.critic_optim.zero_grad(set_to_none=True)
-        q_loss.register_hook(lambda grad: grad * (1 / H))
-        q_loss.backward()
-        self.critic_optim.step() 
-        
-        return {'q': q1.mean().item(), 'q_loss': q_loss.item()}
-
-    def _update_q_mve(self, z):
-        zs, acts, rs, qs = [z], [], [], []
-        H = 5
-
-        with torch.no_grad():
-            for t in range(H):
-                act = self.actor(z, self.std).sample(self.std_clip)
-                acts.append(act)
-                z, r = self.trans(z, act)
-                zs.append(z)
-                rs.append(r)
-            
-            # calculate td_target
-            next_q = torch.min(*self.critic_tar(z, self.actor(z, self.std).sample(self.std_clip)))
-
-
-            td_targets = []
-            for t in reversed(range(len(rs))):
-                next_q = rs[t] + self.gamma * next_q
-                td_targets.append(next_q)
-            td_targets = list(reversed(td_targets))
-
-        # calculate the td error
-        q_loss = 0
-        for t, td_target in enumerate(td_targets):
-            q1, q2 = self.critic(zs[t], acts[t])
-            q_loss = h.mse(q1, td_target) + h.mse(q2, td_target) 
-        q_loss = torch.mean(q_loss)
-        # H-step td
-        # q1, q2 = self.critic(zs[0], acts[0])
-        # q_loss = torch.mean(h.mse(q1, td_targets[0]) + h.mse(q2, td_targets[0]))
-
-        self.critic_optim.zero_grad(set_to_none=True)
-        q_loss.register_hook(lambda grad: grad * (1 / H))
-        q_loss.backward()
-        self.critic_optim.step() 
-        
-        return {'q': q1.mean().item(), 'q_loss': q_loss.item()}
-    
+   
     def _update_q(self, z, act, rew, discount, next_z):
         with torch.no_grad():
             action = self.actor(next_z, std=self.std).sample(clip=self.std_clip)
@@ -299,28 +208,7 @@ class TCRL(object):
         self.actor_optim.step()
 
         return {'pi_loss':pi_loss.item()}
-    
-    def _update_pi_bp(self, z): 
-        # imagine a trajectory
-        H = 5       
-        Q = 0
-
-        for t in range(H):
-            act = self.actor(z, self.std).sample(self.std_clip)
-            z, r = self.trans(z, act)
-            Q += (self.gamma**t) * r
-
-        # calculate td_target
-        next_q = torch.min(*self.critic_tar(z, self.actor(z, self.std).sample(self.std_clip)))
-        Q += (self.gamma**H) * next_q
-
-        pi_loss = -Q.mean()
         
-        self.actor_optim.zero_grad(set_to_none=True)
-        pi_loss.backward()
-        self.actor_optim.step()
-        return {'pi_loss':pi_loss.item()}
-    
     def update(self, step, replay_iter, batch_size):
         self.std = h.linear_schedule(self.std_schedule, step) # linearly udpate std
         info = {'std': self.std}
@@ -332,37 +220,19 @@ class TCRL(object):
         action, reward, discount, next_obses = torch.swapaxes(action, 0, 1), torch.swapaxes(reward, 0, 1),\
                                              torch.swapaxes(discount, 0, 1), torch.swapaxes(next_obses, 0, 1)
         
-        info.update(self._update_trans(obs, action, next_obses, reward))
+        # update encoder and latent dynamics
+        info.update(self._update_enc_trans(obs, action, next_obses, reward))
         
-        if self.use_model == "pass":
-            # form n-step samples
-            z0, zt = self.enc(obs), self.enc(next_obses[self.nstep-1])
-            _rew, _discount = 0, 1
-            for t in range(self.nstep):
-                _rew += _discount * reward[t]
-                _discount *= self.gamma
-            info.update(self._update_q(z0, action[0], _rew, _discount, zt))
-            info.update(self._update_pi(z0))
-        elif self.use_model == "gae":
-            z0 = self.enc(obs)
-            info.update(self._update_q_gae(z0))
-            info.update(self._update_pi(z0))
-        elif self.use_model == "mve":
-            z0 = self.enc(obs)
-            info.update(self._update_q_mve(z0))
-            info.update(self._update_pi(z0))
-        elif self.use_model == "bp":
-            # form n-step samples
-            z0, zt = self.enc(obs), self.enc(next_obses[self.nstep-1])
-            _rew, _discount = 0, 1
-            for t in range(self.nstep):
-                _rew += _discount * reward[t]
-                _discount *= self.gamma
-            info.update(self._update_q(z0, action[0], _rew, _discount, zt))
-            info.update(self._update_pi_bp(z0))
-        else:
-            raise ValueError
-            
+        # form n-step samples
+        z0, zt = self.enc(obs), self.enc(next_obses[self.nstep-1])
+        _rew, _discount = 0, 1
+        for t in range(self.nstep):
+            _rew += _discount * reward[t]
+            _discount *= self.gamma
+        # udpate policy and value functions
+        info.update(self._update_q(z0, action[0], _rew, _discount, zt))
+        info.update(self._update_pi(z0))
+        
         # update target networks
         h.soft_update_params(self.encoder, self.encoder_tar, self.tau)
         h.soft_update_params(self.critic, self.critic_tar, self.tau)
@@ -372,75 +242,13 @@ class TCRL(object):
         return info 
 
     @torch.no_grad()
-    def estimate_value(self, z, actions, horizon):
-        """Estimate value of a trajectory starting at latent state z and executing given actions."""
-        G, discount = 0, 1
-        for t in range(horizon):
-            z, reward = self.trans(z, actions[t])
-            G += discount * reward
-            discount *= self.gamma
-        G += discount * torch.min(*self.critic(z, self.actor(z, self.std).sample(clip=self.std_clip)))
-        return G
-
-    @torch.no_grad()
     def select_action(self, obs, eval_mode=False, t0=True):
         if isinstance(obs, np.ndarray):
             obs = torch.tensor(obs, dtype=torch.float32, device=self.device).unsqueeze(0)
         
-        if self.mppi_kwargs is None:
-            dist = self.actor(self.enc(obs), std=self.std)
-            if eval_mode: 
-                action = dist.mean
-            else:
-                action = dist.sample(clip=None)
-            return action[0]
-
-        # sample policy trajectories
-        horizon = self.mppi_kwargs.get('plan_horizon')
-        num_samples = self.mppi_kwargs.get('num_samples')
-        num_pi_trajs = int(self.mppi_kwargs.get('mixture_coef') * num_samples)
-        if num_pi_trajs > 0:
-            pi_actions = torch.empty(horizon, num_pi_trajs, self.action_shape[0], device=self.device)
-            z = self.encoder(obs).repeat(num_pi_trajs, 1)
-            for t in range(horizon):
-                pi_actions[t] = self.actor(z, self.std).sample()
-                z, _ = self.trans(z, pi_actions[t])
-
-        # Initialize state and parameters
-        z = self.encoder(obs).repeat(num_samples+num_pi_trajs, 1)
-        mean = torch.zeros(horizon, self.action_shape[0], device=self.device)
-        std = 2*torch.ones(horizon, self.action_shape[0], device=self.device)
-        if not t0 and hasattr(self, '_prev_mean'):
-            mean[:-1] = self._prev_mean[1:]
-
-        # Iterate CEM
-        for i in range(self.mppi_kwargs.get('iteration')):
-            actions = torch.clamp(mean.unsqueeze(1) + std.unsqueeze(1) * \
-                torch.randn(horizon, num_samples, self.action_shape[0], device=std.device), -1, 1)
-            if num_pi_trajs > 0:
-                actions = torch.cat([actions, pi_actions], dim=1)
-
-            # Compute elite actions
-            value = self.estimate_value(z, actions, horizon).nan_to_num_(0)
-            elite_idxs = torch.topk(value.squeeze(1), self.mppi_kwargs.get('num_elites'), dim=0).indices
-            elite_value, elite_actions = value[elite_idxs], actions[:, elite_idxs]
-
-            # Update parameters
-            max_value = elite_value.max(0)[0]
-            score = torch.exp(self.mppi_kwargs.get('temperature')*(elite_value - max_value))
-            score /= score.sum(0)
-            _mean = torch.sum(score.unsqueeze(0) * elite_actions, dim=1) / (score.sum(0) + 1e-9)
-            _std = torch.sqrt(torch.sum(score.unsqueeze(0) * (elite_actions - _mean.unsqueeze(1)) ** 2, dim=1) / (score.sum(0) + 1e-9))
-            _std = _std.clamp_(0.1, 2)
-            mean, std = self.mppi_kwargs.get('momentum') * mean + (1 - self.mppi_kwargs.get('momentum')) * _mean, _std
-
-        # Outputs
-        score = score.squeeze(1).cpu().numpy()
-        actions = elite_actions[:, np.random.choice(np.arange(score.shape[0]), p=score)]
-        self._prev_mean = mean
-        mean, std = actions[0], _std[0]
-        a = mean
-        if not eval_mode:
-            a += std * torch.randn(self.action_shape[0], device=std.device)
-        return a
-
+        dist = self.actor(self.enc(obs), std=self.std)
+        if eval_mode: 
+            action = dist.mean
+        else:
+            action = dist.sample(clip=None)
+        return action[0]
