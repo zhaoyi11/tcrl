@@ -75,7 +75,6 @@ class TCRL(object):
                 lr, weight_decay=1e-6, tau=0.005, rho=0.9, gamma=0.99,
                 nstep=3, horizon=5, state_coef=1.0, reward_coef=1.0, grad_clip_norm=10., 
                 std_schedule="", std_clip=0.3, 
-                use_model="pass", mppi_kwargs="",
                 device='cuda'):
         self.device = torch.device(device)
         
@@ -111,9 +110,6 @@ class TCRL(object):
     
         # policy related
         self.gamma, self.nstep = gamma, nstep
-        
-        self.mppi_kwargs = mppi_kwargs
-        self.use_model = use_model
 
 
     def save(self, fp):

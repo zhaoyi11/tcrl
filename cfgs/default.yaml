@@ -1,7 +1,6 @@
 defaults:
     - _self_
     - task: walker_walk
-    - planner: mppi
 
     # disable hydra logging
     - override hydra/hydra_logging: disabled  
@@ -48,7 +47,7 @@ std_schedule: ${std_schedule}
 
 # options
 save_video: false
-use_wandb: true
+use_wandb: false
 save_buffer: false
 save_model: false
 save_interval: 500

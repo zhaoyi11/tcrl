@@ -70,18 +70,6 @@ def main(cfg):
     print("CONFIG", cfg)
 
     ###### initialize the TCRL agent ######
-    if cfg.use_mppi: # True is use mppi decision-time planner 
-        mppi_kwargs = {
-                    "num_samples": cfg.num_samples,
-                    "num_elites": cfg.num_topk,
-                    "plan_horizon": cfg.plan_horizon,
-                    "mixture_coef": cfg.mixture_coef,
-                    "iteration": cfg.iteration,
-                    "temperature": cfg.temperature,
-                    "momentum": cfg.momentum,
-                }
-    else: mppi_kwargs = None
-
     tcrl_kwargs = {
             "obs_shape": cfg.obs_shape,
             "action_shape": cfg.action_shape,
@@ -100,8 +88,6 @@ def main(cfg):
             "std_schedule": cfg.std_schedule,
             "std_clip": cfg.std_clip,
             "device": cfg.device,
-            "use_model": cfg.use_model,
-            "mppi_kwargs": mppi_kwargs
         }
 
     agent = TCRL(**tcrl_kwargs)
