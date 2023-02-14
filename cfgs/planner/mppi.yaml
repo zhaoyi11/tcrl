@@ -1,0 +1,11 @@
+# @package _global_
+planner_name: mppi
+plan_horizon: 5
+num_samples: 512
+num_topk: 64
+iteration: 6
+temperature: 0.5
+momentum: 0.1
+mixture_coef: 0.05  # mixture coef of random traj and policy traj
+
+use_mppi: False
