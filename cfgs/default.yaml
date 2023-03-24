@@ -35,6 +35,7 @@ gamma: 0.99
 rho: 0.9
 grad_clip_norm: 10.
 nstep: 3
+buffer_num_workers: 4
 
 lr: 3e-4
 weight_decay: 1e-6 # only used when updating encoder and latent dynamics
@@ -47,7 +48,7 @@ std_schedule: ${std_schedule}
 
 # options
 save_video: false
-use_wandb: false
+use_wandb: true
 save_buffer: false
 save_model: false
 save_interval: 500

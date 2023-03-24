@@ -158,7 +158,7 @@ class TCRL(object):
             reward_loss += rho * torch.mean(h.mse(r_pred, r_tar), dim=-1)
             
             # don't forget this
-            z = next_z_pred
+            z = next_z_pred 
 
         total_loss = (self.state_coef * state_loss.clamp(max=1e4) + \
                     self.reward_coef * reward_loss.clamp(max=1e4)).mean()

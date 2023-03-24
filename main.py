@@ -100,7 +100,7 @@ def main(cfg):
     replay_storage = utils.ReplayBufferStorage(data_specs, work_dir/'buffer')
 
     replay_loader = utils.make_replay_loader(replay_dir=work_dir/'buffer', max_size=int(cfg.train_step), batch_size=int(cfg.batch_size),
-                                            num_workers=4, save_snapshot=cfg.save_buffer, nstep=int(cfg.horizon), discount=1.0)
+                                            num_workers=cfg.buffer_num_workers, save_snapshot=cfg.save_buffer, nstep=int(cfg.horizon), discount=1.0)
     replay_iter = None
 
     ###################################
