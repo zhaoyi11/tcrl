@@ -54,7 +54,7 @@ def main(cfg):
         logger = Logger(logs_dir)
         # initialize wandb logging if needed
         if cfg.use_wandb:
-            wandb.init(project="tcrl", name=f'{cfg.env_name}-{cfg.algo_name}-{cfg.exp_name}-{str(cfg.seed)}-{int(time.time())}',
+            wandb.init(project="sprl", name=f'{cfg.env_name}-{cfg.algo_name}-{cfg.exp_name}-{str(cfg.seed)}-{int(time.time())}',
                                     group=f'{cfg.env_name}-{cfg.algo_name}', 
                                     tags=[cfg.algo_name, cfg.env_name, cfg.exp_name, str(cfg.seed)],
                                     config=cfg,

@@ -9,8 +9,8 @@ defaults:
 seed: -1 # generate random seed if seed == -1 (by defalut)
 
 env_name: ${env_name}
-algo_name: tcrl
-exp_name: default
+algo_name: ddpg
+exp_name: ddpg
 
 # training
 device: ???
@@ -40,7 +40,7 @@ buffer_num_workers: 4
 lr: 3e-4
 weight_decay: 1e-6 # only used when updating encoder and latent dynamics
 
-mlp_dims: [512, 512]
+mlp_dims: [512, 512, 512]
 latent_dim: ${latent_dim}
 
 std_clip: 0.3
