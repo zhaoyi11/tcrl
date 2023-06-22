@@ -1,6 +1,6 @@
 # TCRL: Simplified Temporal Consistency Reinforcement Learning
 
-This is the PyTorch implementation of Simplified Temporal Consistency Reinforcement Learning (TCRL).
+This is the PyTorch implementation of [Simplified Temporal Consistency Reinforcement Learning](https://arxiv.org/abs/2306.09466) (TCRL).
 
 ## Method
 TCRL shows that, a simple representation learning approach relying only on a latent dynamics model trained
