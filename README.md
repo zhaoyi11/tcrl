@@ -12,18 +12,6 @@ to train compared to ensemble-based methods.
 With model-free RL without planning, especially on high-dimensional tasks, such as the DeepMind Control Suite Humanoid and Dog tasks, our approach outperforms model-free methods by a
 large margin and matches model-based methods’ sample efficiency while training 2.4× faster.
 
-![image](./media/TCRL.png)
-
-Model architecture for computing our temporal
-consistency reinforcement learning (TCRL) latent state $\hat{z}_t$. 
-At each time step t the model encodes observation ot into a latent
-state $\hat{z}_t$ using a neural network. The latent dynamics model $\textbf{d}_{\phi}$ predicts the next latent state $\hat{z}_{t+1}$ using $\hat{z}_t$ and action $a_t$. 
-A standard momentum encoder $\textbf{e}_{\theta^-}$ prevents collapse of the latent state representation. 
-We use the cosine loss between the latent state and the momentum encoded latent state, denoted by a dashed line, for training. 
-The reward function, omitted for clarity, is trained with the standard MSE loss. 
-This simple model works surprisingly well providing a trained dynamics model for planning experiments,
-and, in model-free RL experiments, the trained latent states $\hat{z}_t$ are used as inputs to policy and value functions. 
-
 ![video](./media/cartpole_swingup.gif)
 ![video](./media/pendulum_swingup.gif)
 ![video](./media/acrobot_swingup.gif)
