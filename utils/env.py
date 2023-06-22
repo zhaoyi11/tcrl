@@ -5,7 +5,7 @@ import numpy as np
 from dm_control import suite
 from dm_control.suite.wrappers import action_scale
 from dm_env import StepType, specs
-import gym
+
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
@@ -244,75 +244,9 @@ class ConcatObsWrapper(dm_env.Environment):
         return time_step._replace(observation=np.concatenate([v.flatten() for v in obs.values()]))
 
 
-class TimeStepToGymWrapper(object):
-    def __init__(self, env, domain, task, action_repeat, modality):
-        try: # pixels
-            obs_shp = env.observation_spec().shape
-            assert modality == 'pixels'
-        except: # state
-            obs_shp = []
-            for v in env.observation_spec().values():
-                try:
-                    shp = 1
-                    _shp = v.shape
-                    for s in _shp:
-                        shp *= s
-                except:
-                    shp = 1
-                obs_shp.append(shp)
-            obs_shp = (np.sum(obs_shp),)
-            assert modality != 'pixels'
-        act_shp = env.action_spec().shape
-        self.observation_space = gym.spaces.Box(
-            low=np.full(obs_shp, -np.inf if modality != 'pixels' else env.observation_spec().minimum),
-            high=np.full(obs_shp, np.inf if modality != 'pixels' else env.observation_spec().maximum),
-            shape=obs_shp,
-            dtype=np.float32 if modality != 'pixels' else np.uint8)
-        self.action_space = gym.spaces.Box(
-            low=np.full(act_shp, env.action_spec().minimum),
-            high=np.full(act_shp, env.action_spec().maximum),
-            shape=act_shp,
-            dtype=env.action_spec().dtype)
-        self.env = env
-        self.domain = domain
-        self.task = task
-        self.ep_len = 1000//action_repeat
-        self.modality = modality
-        self.t = 0
-    
-    @property
-    def unwrapped(self):
-        return self.env
-
-    @property
-    def reward_range(self):
-        return None
-
-    @property
-    def metadata(self):
-        return None
-    
-    def _obs_to_array(self, obs):
-        if self.modality != 'pixels':
-            return np.concatenate([v.flatten() for v in obs.values()])
-        return obs
-
-    def reset(self):
-        self.t = 0
-        return self._obs_to_array(self.env.reset().observation)
-    
-    def step(self, action):
-        self.t += 1
-        time_step = self.env.step(action)
-        return self._obs_to_array(time_step.observation), time_step.reward, time_step.last() or self.t == self.ep_len, defaultdict(float)
-
-    def render(self, mode='rgb_array', width=384, height=384, camera_id=0):
-        camera_id = dict(quadruped=2).get(self.domain, camera_id)
-        return self.env.physics.render(height, width, camera_id)
-
 def make_env(env_name, seed, action_repeat):
     """
-    Make environment for TD-MPC experiments.
+    Make environment for TCRL experiments.
     Adapted from https://github.com/facebookresearch/drqv2
     """
     domain, task = str(env_name).replace('-', '_').split('_', 1)
@@ -324,18 +258,12 @@ def make_env(env_name, seed, action_repeat):
                         task_kwargs={'random': seed},
                         visualize_reward=False)
     else:
-        import os, sys
-        sys.path.append('..')
-        import custom_dmc_tasks as cdmc
-        env = cdmc.make(domain, task,                         
-                        task_kwargs={'random': seed},
-                        visualize_reward=False)
+        raise ValueError
     
     env = ActionDTypeWrapper(env, np.float32)
     env = ActionRepeatWrapper(env, action_repeat)
     env = ExtendedTimeStepWrapper(env)
     env = ConcatObsWrapper(env)
-    # env = TimeStepToGymWrapper(env, domain, task, action_repeat, 'state')
 
     return env
     

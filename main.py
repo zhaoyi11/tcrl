@@ -57,8 +57,7 @@ def main(cfg):
             wandb.init(project="tcrl", name=f'{cfg.env_name}-{cfg.algo_name}-{cfg.exp_name}-{str(cfg.seed)}-{int(time.time())}',
                                     group=f'{cfg.env_name}-{cfg.algo_name}', 
                                     tags=[cfg.algo_name, cfg.env_name, cfg.exp_name, str(cfg.seed)],
-                                    config=cfg,
-                                    monitor_gym=True)
+                                    config=cfg)
     video_recorder = VideoRecorder(work_dir) if cfg.save_video else None
     
     ###### initialize environments ######

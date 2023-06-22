@@ -5,5 +5,3 @@ defaults:
 
 env_name: cartpole-balance_sparse
 
-# task-specific parameters
-action_repeat: 8
