@@ -52,12 +52,7 @@ def main(cfg):
         logs_dir = work_dir/'logging'
         helper.make_dir(work_dir / "logging") 
         logger = Logger(logs_dir)
-        # initialize wandb logging if needed
-        if cfg.use_wandb:
-            wandb.init(project="tcrl", name=f'{cfg.env_name}-{cfg.algo_name}-{cfg.exp_name}-{str(cfg.seed)}-{int(time.time())}',
-                                    group=f'{cfg.env_name}-{cfg.algo_name}', 
-                                    tags=[cfg.algo_name, cfg.env_name, cfg.exp_name, str(cfg.seed)],
-                                    config=cfg)
+
     video_recorder = VideoRecorder(work_dir) if cfg.save_video else None
     
     ###### initialize environments ######
@@ -66,6 +61,14 @@ def main(cfg):
 
     cfg.obs_shape = tuple(int(x) for x in env.observation_spec().shape)
     cfg.action_shape = tuple(int(x) for x in env.action_spec().shape)
+    
+    # initialize wandb logging if needed
+    if cfg.use_wandb:
+        import omegaconf
+        wandb.init(project="tcrl", name=f'{cfg.env_name}-{cfg.algo_name}-{cfg.exp_name}-{str(cfg.seed)}-{int(time.time())}',
+                                    group=f'{cfg.env_name}-{cfg.algo_name}', 
+                                    tags=[cfg.algo_name, cfg.env_name, cfg.exp_name, str(cfg.seed)],
+                                    config=omegaconf.OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True))
     print("CONFIG", cfg)
 
     ###### initialize the TCRL agent ######
