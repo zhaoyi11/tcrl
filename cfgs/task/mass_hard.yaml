@@ -1,0 +1,7 @@
+# @package _global_
+defaults:
+  - _self_
+  - medium
+
+env_name: mass_hard
+

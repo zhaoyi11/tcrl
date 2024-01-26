@@ -250,7 +250,7 @@ def make_env(env_name, seed, action_repeat):
     Adapted from https://github.com/facebookresearch/drqv2
     """
     domain, task = str(env_name).replace('-', '_').split('_', 1)
-    domain = dict(cup='ball_in_cup').get(domain, domain)
+    domain = dict(cup='ball_in_cup', mass='point_mass').get(domain, domain)
 
     if (domain, task) in suite.ALL_TASKS:
         env = suite.load(domain,
