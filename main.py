@@ -56,8 +56,8 @@ def main(cfg):
     video_recorder = VideoRecorder(work_dir) if cfg.save_video else None
     
     ###### initialize environments ######
-    env = utils.make_env(cfg.env_name, cfg.seed, cfg.action_repeat)
-    eval_env = utils.make_env(cfg.env_name, cfg.seed+100, cfg.action_repeat)
+    env = utils.make_env(cfg.env_name, cfg.seed, cfg.action_repeat, cfg.record_pixels)
+    eval_env = utils.make_env(cfg.env_name, cfg.seed+100, cfg.action_repeat, cfg.record_pixels)
 
     cfg.obs_shape = tuple(int(x) for x in env.observation_spec().shape)
     cfg.action_shape = tuple(int(x) for x in env.action_spec().shape)
@@ -95,10 +95,18 @@ def main(cfg):
     agent = TCRL(**tcrl_kwargs)
 
     ###### prepare replay buffer ######
-    data_specs = (env.observation_spec(),
-                  env.action_spec(),
-                  specs.Array((1,), np.float32, 'reward'),
-                  specs.Array((1,), np.float32, 'discount'))
+    if cfg.record_pixels:
+        data_specs = (env.observation_spec(),
+                    env.action_spec(),
+                    specs.Array((3, 64, 64), np.uint8, 'pixels'),
+                    specs.Array((1,), np.float32, 'reward'),
+                    specs.Array((1,), np.float32, 'discount'))
+    else:
+        data_specs = (env.observation_spec(),
+            env.action_spec(),
+            specs.Array((1,), np.float32, 'reward'),
+            specs.Array((1,), np.float32, 'discount')) 
+
     replay_storage = utils.ReplayBufferStorage(data_specs, work_dir/'buffer')
 
     replay_loader = utils.make_replay_loader(replay_dir=work_dir/'buffer', max_size=int(cfg.train_step), batch_size=int(cfg.batch_size),

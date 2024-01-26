@@ -53,6 +53,7 @@ save_buffer: false
 save_model: false
 save_interval: 500
 save_logging: true
+record_pixels: false # whether to record pixels in buffer during training
 
 run_suffix: 0
 # ref: https://stackoverflow.com/questions/65104134/disable-file-output-of-hydra

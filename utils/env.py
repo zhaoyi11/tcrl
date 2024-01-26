@@ -5,6 +5,7 @@ import numpy as np
 from dm_control import suite
 from dm_control.suite.wrappers import action_scale
 from dm_env import StepType, specs
+from dm_control.suite.wrappers import action_scale, pixels
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
@@ -15,6 +16,7 @@ class ExtendedTimeStep(NamedTuple):
     reward: Any
     discount: Any
     observation: Any
+    pixels: Any
     action: Any
 
     def first(self):
@@ -188,11 +190,22 @@ class ExtendedTimeStepWrapper(dm_env.Environment):
         if action is None:
             action_spec = self.action_spec()
             action = np.zeros(action_spec.shape, dtype=action_spec.dtype)
-        return ExtendedTimeStep(observation=time_step.observation,
+        if 'pixels' in time_step.observation:
+            pixels = time_step.observation.pop('pixels')
+            pixels = pixels.transpose(2, 0, 1)
+            return ExtendedTimeStep(observation=time_step.observation,
+                                pixels=pixels,
                                 step_type=time_step.step_type,
                                 action=action,
                                 reward=time_step.reward or 0.0,
-                                discount=time_step.discount or 1.0)
+                                discount=time_step.discount or 1.0) 
+        else:
+            return ExtendedTimeStep(observation=time_step.observation,
+                                    pixels=None,
+                                    step_type=time_step.step_type,
+                                    action=action,
+                                    reward=time_step.reward or 0.0,
+                                    discount=time_step.discount or 1.0)
 
     def observation_spec(self):
         return self._env.observation_spec()
@@ -244,7 +257,7 @@ class ConcatObsWrapper(dm_env.Environment):
         return time_step._replace(observation=np.concatenate([v.flatten() for v in obs.values()]))
 
 
-def make_env(env_name, seed, action_repeat):
+def make_env(env_name, seed, action_repeat, record_video):
     """
     Make environment for TCRL experiments.
     Adapted from https://github.com/facebookresearch/drqv2
@@ -260,6 +273,14 @@ def make_env(env_name, seed, action_repeat):
     else:
         raise ValueError
     
+    if record_video:
+        # zoom in camera for quadruped
+        camera_id = dict(quadruped=2).get(domain, 0)
+        render_kwargs = dict(height=64, width=64, camera_id=camera_id)
+        env = pixels.Wrapper(env,
+                                pixels_only=False,
+                                render_kwargs=render_kwargs)
+
     env = ActionDTypeWrapper(env, np.float32)
     env = ActionRepeatWrapper(env, action_repeat)
     env = ExtendedTimeStepWrapper(env)

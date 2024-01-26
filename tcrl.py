@@ -197,6 +197,7 @@ class TCRL(object):
     def _update_pi(self, z):
         a = self.actor(z, std=self.std).sample(clip=self.std_clip)
         Q = torch.min(*self.critic(z, a))
+
         pi_loss = -Q.mean()
         
         self.actor_optim.zero_grad(set_to_none=True)
